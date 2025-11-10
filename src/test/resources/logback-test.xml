@@ -1,0 +1,15 @@
+<configuration>
+    <!-- Simple console appender for test output -->
+    <appender name="CONSOLE" class="ch.qos.logback.core.ConsoleAppender">
+        <encoder>
+            <pattern>%d{HH:mm:ss.SSS} %-5level %logger{36} - %msg%n</pattern>
+        </encoder>
+    </appender>
+
+    <!-- Silence PaymentServiceImpl logs during tests to avoid confusion with intentionally thrown exceptions -->
+    <logger name="com.selimhorri.app.service.impl.PaymentServiceImpl" level="OFF"/>
+
+    <root level="WARN">
+        <appender-ref ref="CONSOLE"/>
+    </root>
+</configuration>
