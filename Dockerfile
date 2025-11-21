@@ -1,23 +1,46 @@
-FROM eclipse-temurin:17-jre
+# Multi-stage build - Optimized
+FROM maven:3.9-eclipse-temurin-11-alpine AS build
+WORKDIR /app
 
-ARG PROJECT_VERSION=0.1.0
+# Copiar settings.xml si existe (opcional)
+COPY settings.xml* /root/.m2/
+# Copiar proyecto
+COPY pom.xml .
 
-# Crear directorio y configurar permisos
-RUN mkdir -p /home/app && \
-    addgroup --system --gid 1001 appgroup && \
-    adduser --system --uid 1001 --gid 1001 appuser && \
-    chown -R appuser:appgroup /home/app
+# Compilar aplicación directamente
+COPY src ./src
+RUN mvn clean package -Dmaven.test.skip=true
 
+# Imagen final - Alpine para menor tamaño
+FROM eclipse-temurin:11-jre-alpine
+
+# Instalar wget para healthcheck (más ligero que curl)
+RUN apk add --no-cache wget
+
+# Variables de entorno optimizadas para containers
+ENV SPRING_PROFILES_ACTIVE=dev \
+    JAVA_OPTS="-Xmx256m -Xms128m -XX:MaxMetaspaceSize=128m -XX:+UseSerialGC -XX:MaxRAM=512m -XX:+UseContainerSupport" \
+    SERVER_PORT=8400
+
+# Usuario no-root (sintaxis Alpine)
+RUN addgroup -g 1001 appuser && \
+    adduser -D -u 1001 -G appuser appuser
+
+# Directorio de aplicación
 WORKDIR /home/app
+RUN chown appuser:appuser /home/app
+
 USER appuser
 
-# Variables de entorno optimizadas para contenedor
-ENV SPRING_PROFILES_ACTIVE=dev \
-    JAVA_OPTS="-XX:+UseContainerSupport -XX:MaxRAMPercentage=75.0 -XX:+ExitOnOutOfMemoryError"
+# Copiar JAR
+COPY --from=build --chown=appuser:appuser /app/target/*.jar payment-service.jar
 
-# Copiar JAR como última capa para mejor caché
-COPY --chown=appuser:appgroup target/payment-service-v${PROJECT_VERSION}.jar payment-service.jar
+# Exponer puertos
+EXPOSE ${SERVER_PORT}
 
-EXPOSE 8300
+# Health check con wget
+HEALTHCHECK --interval=30s --timeout=10s --start-period=60s --retries=3 \
+  CMD wget --no-verbose --tries=1 --spider http://localhost:${SERVER_PORT}/actuator/health || exit 1
 
-ENTRYPOINT ["sh", "-c", "java $JAVA_OPTS -jar payment-service.jar"]
+# Punto de entrada
+ENTRYPOINT ["sh", "-c", "java $JAVA_OPTS -Dspring.profiles.active=$SPRING_PROFILES_ACTIVE -Dserver.port=$SERVER_PORT -jar payment-service.jar"]
