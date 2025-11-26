@@ -23,7 +23,4 @@ jobs:
       java-version: '11'
       maven-version: '3.9'
       skip-tests: false
-    secrets:
-      SONARQUBE_TOKEN: ${{ secrets.SONARQUBE_TOKEN }}
-      SONARQUBE_HOST_URL: ${{ secrets.SONARQUBE_HOST_URL }}
-      SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+    secrets: inherit
