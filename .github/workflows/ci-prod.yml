@@ -16,7 +16,7 @@ permissions:
 jobs:
   pipeline:
     name: Production Pipeline
-    uses: IngesoftV-backend-microservices/pipeline-templates/.github/workflows/microservice-cicd.yml@main
+    uses: IngesoftV-backend-microservices/pipeline-templates/.github/workflows/microservice-cicd.yml@feature/github-actions-pipelines
     with:
       service-name: payment-service
       environment: prod
