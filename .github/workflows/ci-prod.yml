@@ -1,0 +1,32 @@
+name: CI/CD - Production
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  packages: write
+  security-events: write
+  deployments: write
+  id-token: write
+
+jobs:
+  pipeline:
+    name: Production Pipeline
+    uses: IngesoftV-backend-microservices/pipeline-templates/.github/workflows/microservice-cicd.yml@feature/github-actions-pipelines
+    with:
+      service-name: payment-service
+      environment: prod
+      java-version: '11'
+      maven-version: '3.9'
+      skip-tests: false
+    secrets:
+      SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+      AZURE_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }}
+      AZURE_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
+      AZURE_SUBSCRIPTION_ID: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+      GH_PAT: ${{ secrets.GH_PAT }}
+      SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
