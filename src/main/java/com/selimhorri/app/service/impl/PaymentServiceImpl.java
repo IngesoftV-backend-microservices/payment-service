@@ -22,8 +22,11 @@ import com.selimhorri.app.exception.custom.InvalidInputException;
 import com.selimhorri.app.exception.custom.InvalidPaymentStatusException;
 import com.selimhorri.app.exception.custom.ResourceNotFoundException;
 import com.selimhorri.app.helper.PaymentMappingHelper;
+import com.selimhorri.app.metrics.PaymentBusinessMetrics;
 import com.selimhorri.app.repository.PaymentRepository;
 import com.selimhorri.app.service.PaymentService;
+
+import io.micrometer.core.instrument.Timer;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -36,6 +39,7 @@ public class PaymentServiceImpl implements PaymentService {
 
     private final PaymentRepository paymentRepository;
     private final RestTemplate restTemplate;
+    private final PaymentBusinessMetrics businessMetrics;
 
     @Override
     public List<PaymentDto> findAll() {
@@ -67,16 +71,34 @@ public class PaymentServiceImpl implements PaymentService {
     public PaymentDto save(final PaymentDto paymentDto) {
         log.info("Saving payment for order: {}", paymentDto.getOrderDto().getOrderId());
 
-        validateOrderId(paymentDto);
-        OrderDto orderDto = verifyOrderEligibility(paymentDto.getOrderDto().getOrderId());
+        Timer.Sample timer = businessMetrics.startPaymentProcessingTimer();
         
-        PaymentDto savedPayment = PaymentMappingHelper.map(
-                this.paymentRepository.save(PaymentMappingHelper.mapForPayment(paymentDto)));
-        
-        updateOrderStatus(paymentDto.getOrderDto().getOrderId());
-        
-        savedPayment.setOrderDto(orderDto);
-        return savedPayment;
+        try {
+            validateOrderId(paymentDto);
+            OrderDto orderDto = verifyOrderEligibility(paymentDto.getOrderDto().getOrderId());
+            
+            PaymentDto savedPayment = PaymentMappingHelper.map(
+                    this.paymentRepository.save(PaymentMappingHelper.mapForPayment(paymentDto)));
+            
+            updateOrderStatus(paymentDto.getOrderDto().getOrderId());
+            
+            savedPayment.setOrderDto(orderDto);
+            
+            // Registrar métricas de negocio
+            businessMetrics.recordPaymentAttempt(savedPayment.getPaymentStatus());
+            
+            // Si el pago se crea directamente con estado COMPLETED o CANCELED,
+            // registrar éxito/fallo inmediatamente (solo una vez al crear)
+            if (savedPayment.getPaymentStatus() == PaymentStatus.COMPLETED) {
+                businessMetrics.recordPaymentSuccess();
+            } else if (savedPayment.getPaymentStatus() == PaymentStatus.CANCELED) {
+                businessMetrics.recordPaymentFailure();
+            }
+            
+            return savedPayment;
+        } finally {
+            businessMetrics.stopPaymentProcessingTimer(timer);
+        }
     }
 
     @Override
@@ -87,10 +109,16 @@ public class PaymentServiceImpl implements PaymentService {
                 .orElseThrow(() -> new ResourceNotFoundException(
                         ErrorCode.PAYMENT_NOT_FOUND, paymentId));
 
-        PaymentStatus newStatus = determineNextStatus(payment.getPaymentStatus());
+        PaymentStatus oldStatus = payment.getPaymentStatus();
+        PaymentStatus newStatus = determineNextStatus(oldStatus);
         payment.setPaymentStatus(newStatus);
         
-        return PaymentMappingHelper.map(this.paymentRepository.save(payment));
+        PaymentDto updatedPayment = PaymentMappingHelper.map(this.paymentRepository.save(payment));
+        
+        // Registrar métricas de negocio
+        businessMetrics.recordPaymentStatusChange(oldStatus, newStatus);
+        
+        return updatedPayment;
     }
 
     @Override
@@ -104,8 +132,12 @@ public class PaymentServiceImpl implements PaymentService {
 
         validateCancellationEligibility(payment);
 
+        PaymentStatus oldStatus = payment.getPaymentStatus();
         payment.setPaymentStatus(PaymentStatus.CANCELED);
         this.paymentRepository.save(payment);
+        
+        // Registrar métricas de negocio
+        businessMetrics.recordPaymentStatusChange(oldStatus, PaymentStatus.CANCELED);
         
         log.info("Payment with id {} has been canceled", paymentId);
     }
