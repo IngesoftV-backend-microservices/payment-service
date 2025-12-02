@@ -25,7 +25,8 @@ jobs:
       maven-version: '3.9'
       skip-tests: false
     secrets:
-      SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+      SONAR_TOKEN_DEV: ${{ secrets.SONAR_TOKEN_DEV }}
+      SONAR_TOKEN_PROD: ${{ secrets.SONAR_TOKEN_PROD }}
       AZURE_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }}
       AZURE_CLIENT_ID_ENV: ${{ secrets.AZURE_CLIENT_ID_ENV }}
       AZURE_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
