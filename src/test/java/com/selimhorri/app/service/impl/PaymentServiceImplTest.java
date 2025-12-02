@@ -39,6 +39,9 @@ class PaymentServiceImplTest {
     @Mock
     private RestTemplate restTemplate;
 
+    @Mock
+    private com.selimhorri.app.metrics.PaymentBusinessMetrics businessMetrics;
+
     @InjectMocks
     private PaymentServiceImpl paymentService;
 
