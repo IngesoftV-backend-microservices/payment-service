@@ -6,6 +6,29 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [v0.1.0] - 2025-12-02
+## [v0.1.6] - 2025-12-03
+
+**Environment:** prod
+
+### Changes
+
+### 📚 Documentation
+
+- update CHANGELOG for v0.1.5 [skip ci] (7f67eb6)
+
+### 🔧 Other Changes
+
+- testing pipeline (ba1aa40)
+
+### 📦 Deployment Information
+
+- **Docker Image:** `acrvingesoftprod.azurecr.io/payment-service:v0.1.6`
+- **Commit SHA:** `65cc2f0e01bb2f9871171a1e4c7d811e7f081069`
+- **Triggered by:** @Tiago0507
+- **Workflow Run:** [View Details](https://github.com/IngesoftV-backend-microservices/payment-service/actions/runs/19879044303)
+
+### 🔄 Rollback Instructions
+
 ## [v0.1.5] - 2025-12-03
 
 **Environment:** prod
